@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>IronLog</title>
+    
+    <!-- PWA Ayarları -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="IronLog">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2964/2964514.png">
+
+    <!-- Kütüphaneler -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        body { background-color: #020617; -webkit-tap-highlight-color: transparent; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, createContext, useContext, useMemo } = React;
+
+        // ---------------------------------------------------------
+        // 1. İKONLAR
+        // ---------------------------------------------------------
+        const Icon = ({ children, size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>
+        );
+        const Activity = (p) => <Icon {...p}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></Icon>;
+        const Plus = (p) => <Icon {...p}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></Icon>;
+        const Check = (p) => <Icon {...p}><polyline points="20 6 9 17 4 12"></polyline></Icon>;
+        const Save = (p) => <Icon {...p}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></Icon>;
+        const Trash2 = (p) => <Icon {...p}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></Icon>;
+        const History = (p) => <Icon {...p}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12"></path><path d="M3 3v9h9"></path></Icon>;
+        const Trophy = (p) => <Icon {...p}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></Icon>;
+        const Calendar = (p) => <Icon {...p}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></Icon>;
+        const ChevronRight = (p) => <Icon {...p}><path d="m9 18 6-6-6-6"/></Icon>;
+        const ArrowLeft = (p) => <Icon {...p}><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></Icon>;
+        const TrendingUp = (p) => <Icon {...p}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></Icon>;
+        const Settings = (p) => <Icon {...p}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></Icon>;
+        const Clock = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></Icon>;
+        const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></Icon>;
+
+        // ---------------------------------------------------------
+        // 2. BİLEŞEN: WHEEL PICKER
+        // ---------------------------------------------------------
+        const ITEM_HEIGHT = 60;
+        const VISIBLE_ITEMS = 5;
+        const WheelPicker = ({ items, selectedValue, onSelect, label }) => {
+            const scrollRef = useRef(null);
+            const [isScrolling, setIsScrolling] = useState(false);
+            const timerRef = useRef(null);
+            const containerHeight = ITEM_HEIGHT * VISIBLE_ITEMS;
+            const paddingHeight = (containerHeight - ITEM_HEIGHT) / 2;
+
+            const handleScroll = (e) => {
+                setIsScrolling(true);
+                if (timerRef.current) clearTimeout(timerRef.current);
+                timerRef.current = setTimeout(() => {
+                    setIsScrolling(false);
+                    const scrollTop = e.target.scrollTop;
+                    const index = Math.round(scrollTop / ITEM_HEIGHT);
+                    if (index >= 0 && index < items.length) {
+                        onSelect(items[index]);
+                        e.target.scrollTo({ top: index * ITEM_HEIGHT, behavior: "smooth" });
+                    }
+                }, 150);
+            };
+
+            useEffect(() => {
+                if (scrollRef.current && !isScrolling) {
+                    const index = items.indexOf(selectedValue);
+                    if (index !== -1) {
+                        scrollRef.current.scrollTo({ top: index * ITEM_HEIGHT, behavior: "auto" });
+                    }
+                }
+            }, [selectedValue, isScrolling, items]);
+
+            return (
+                <div className="flex flex-col items-center w-full relative">
+                    <div className="text-[10px] font-black text-slate-500 mb-2 uppercase tracking-widest">{label}</div>
+                    <div className="relative w-full overflow-hidden bg-slate-900 rounded-2xl border border-slate-800 shadow-inner" style={{ height: containerHeight }}>
+                        <div className="absolute left-0 right-0 pointer-events-none z-10 border-y border-blue-500/20 bg-blue-500/5" style={{ top: paddingHeight, height: ITEM_HEIGHT }}></div>
+                        <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-slate-900/95 via-transparent to-slate-900/95 z-20"></div>
+                        <div ref={scrollRef} onScroll={handleScroll} className="h-full overflow-y-auto no-scrollbar touch-pan-y" style={{ scrollBehavior: isScrolling ? "auto" : "smooth" }}>
+                            <div style={{ height: paddingHeight }}></div>
+                            {items.map((item) => (
+                                <div key={item} onClick={() => { onSelect(item); const index = items.indexOf(item); scrollRef.current.scrollTo({ top: index * ITEM_HEIGHT, behavior: "smooth" }); }} className="flex items-center justify-center cursor-pointer" style={{ height: ITEM_HEIGHT }}>
+                                    <span className={`transition-all duration-200 antialiased font-mono tracking-tight ${item === selectedValue ? "text-5xl font-black text-white" : "text-xl text-slate-500 font-semibold opacity-30"}`}>{item}</span>
+                                </div>
+                            ))}
+                            <div style={{ height: paddingHeight }}></div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // ---------------------------------------------------------
+        // 3. BEYİN: WORKOUT CONTEXT
+        // ---------------------------------------------------------
+        const WorkoutContext = createContext();
+        const useWorkout = () => useContext(WorkoutContext);
+
+        const WorkoutProvider = ({ children }) => {
+            const [history, setHistory] = useState(() => {
+                try { return JSON.parse(localStorage.getItem("ironlog_history")) || []; } catch (e) { return []; }
+            });
+            const [customExercises, setCustomExercises] = useState(() => {
+                try { return JSON.parse(localStorage.getItem("ironlog_exercises")) || []; } catch (e) { return []; }
+            });
+            const [settings, setSettings] = useState(() => {
+                try { return JSON.parse(localStorage.getItem("ironlog_settings")) || { restTimerEnabled: true, restTimerSeconds: 90 }; } catch (e) { return { restTimerEnabled: true, restTimerSeconds: 90 }; }
+            });
+
+            useEffect(() => { localStorage.setItem("ironlog_history", JSON.stringify(history)); }, [history]);
+            useEffect(() => { localStorage.setItem("ironlog_exercises", JSON.stringify(customExercises)); }, [customExercises]);
+            useEffect(() => { localStorage.setItem("ironlog_settings", JSON.stringify(settings)); }, [settings]);
+
+            const saveWorkout = (workoutData) => {
+                setHistory((prev) => {
+                    const existingIndex = prev.findIndex(item => item.date === workoutData.date);
+                    if (existingIndex !== -1) {
+                        const updatedHistory = [...prev];
+                        updatedHistory[existingIndex] = { ...updatedHistory[existingIndex], exercises: workoutData.exercises, lastUpdated: Date.now() };
+                        return updatedHistory;
+                    } else {
+                        return [workoutData, ...prev];
+                    }
+                });
+            };
+
+            const addCustomExercise = (name) => {
+                if (!customExercises.some(ex => ex.toLowerCase() === name.toLowerCase())) {
+                    setCustomExercises(prev => [...prev, name]);
+                }
+            };
+
+            const updateSettings = (newSettings) => {
+                setSettings(prev => ({ ...prev, ...newSettings }));
+            };
+
+            const clearHistory = () => {
+                setHistory([]);
+                localStorage.removeItem("ironlog_history");
+            };
+
+            return (
+                <WorkoutContext.Provider value={{ history, saveWorkout, clearHistory, customExercises, addCustomExercise, settings, updateSettings }}>
+                    {children}
+                </WorkoutContext.Provider>
+            );
+        };
+
+        // ---------------------------------------------------------
+        // 4. SAYFA: AYARLAR (SettingsPage)
+        // ---------------------------------------------------------
+        const SettingsPage = ({ onBack }) => {
+            const { settings, updateSettings } = useWorkout();
+            const timeOptions = [30, 60, 90, 120, 180];
+
+            return (
+                <div className="h-[100dvh] bg-slate-950 text-slate-100 flex flex-col p-6 font-sans">
+                    <div className="flex items-center gap-4 mb-8">
+                        <button onClick={onBack} className="bg-slate-900 p-3 rounded-xl border border-slate-800 text-slate-400 hover:text-white transition-colors"><ArrowLeft size={20} /></button>
+                        <h1 className="text-2xl font-black text-white italic tracking-tight flex items-center gap-2"><Settings size={24} className="text-blue-500" /> AYARLAR</h1>
+                    </div>
+                    <div className="space-y-6">
+                        <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-5">
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center gap-3">
+                                    <div className={`p-3 rounded-xl ${settings.restTimerEnabled ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-800 text-slate-500'}`}><Clock size={24} /></div>
+                                    <div><h3 className="font-bold text-lg text-white">Dinlenme Sayacı</h3><p className="text-xs text-slate-500">Set sonrası otomatik başlat</p></div>
+                                </div>
+                                <button onClick={() => updateSettings({ restTimerEnabled: !settings.restTimerEnabled })} className={`w-14 h-8 rounded-full transition-colors relative ${settings.restTimerEnabled ? 'bg-blue-600' : 'bg-slate-700'}`}>
+                                    <div className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${settings.restTimerEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                                </button>
+                            </div>
+                            {settings.restTimerEnabled && (
+                                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <div className="h-px w-full bg-slate-800 mb-4"></div>
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 block">Varsayılan Süre (Saniye)</label>
+                                    <div className="grid grid-cols-5 gap-2">
+                                        {timeOptions.map((time) => (
+                                            <button key={time} onClick={() => updateSettings({ restTimerSeconds: time })} className={`py-3 rounded-xl font-bold text-sm transition-all border ${settings.restTimerSeconds === time ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-900/50' : 'bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-800'}`}>{time}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // ---------------------------------------------------------
+        // 5. SAYFA: ANALİZ (AnalysisPage - Cloud Chart)
+        // ---------------------------------------------------------
+        const CloudChart = ({ data, color = "#3b82f6" }) => {
+            if (!data || data.length === 0) return <div className="h-64 flex items-center justify-center text-slate-500 text-sm border border-slate-800 border-dashed rounded-xl bg-slate-900/30">Henüz veri yok.</div>;
+            const height = 300;
+            const width = Math.max(350, data.length * 70);
+            const paddingX = 50;
+            const paddingY = 30;
+            const chartPoints = data.map(d => {
+                const weights = d.sets.map(s => Number(s.weight));
+                return { ...d, maxVal: Math.max(...weights), minVal: Math.min(...weights), allWeights: weights };
+            });
+            const allMaxValues = chartPoints.map(d => d.maxVal);
+            const allMinValues = chartPoints.map(d => d.minVal);
+            const globalMax = Math.max(...allMaxValues) * 1.1;
+            const globalMin = Math.min(...allMinValues) > 0 ? Math.min(...allMinValues) * 0.8 : 0;
+            const valueRange = globalMax - globalMin;
+            const yTicks = [0, 0.25, 0.5, 0.75, 1].map(r => globalMin + r * valueRange);
+            const points = chartPoints.map((d, i) => {
+                const x = paddingX + (i * ((width - paddingX - 20) / Math.max(1, data.length - 1)));
+                const yMax = height - paddingY - ((d.maxVal - globalMin) / valueRange) * (height - 2 * paddingY);
+                const yMin = height - paddingY - ((d.minVal - globalMin) / valueRange) * (height - 2 * paddingY);
+                const yAll = d.allWeights.map(w => ({ y: height - paddingY - ((w - globalMin) / valueRange) * (height - 2 * paddingY), value: w }));
+                return { x, yMax, yMin, yAll, ...d };
+            });
+            let cloudPath = "";
+            points.forEach((p, i) => { cloudPath += i === 0 ? `M ${p.x},${p.yMax}` : ` L ${p.x},${p.yMax}`; });
+            for (let i = points.length - 1; i >= 0; i--) { cloudPath += ` L ${points[i].x},${points[i].yMin}`; }
+            cloudPath += " Z";
+            const topLinePath = points.reduce((acc, p, i) => i === 0 ? `M ${p.x},${p.yMax}` : `${acc} L ${p.x},${p.yMax}`, "");
+
+            return (
+                <div className="w-full overflow-x-auto scrollbar-hide border border-slate-800 rounded-2xl bg-slate-900/50">
+                    <div style={{ width: '100%', minWidth: width }}>
+                        <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+                            {yTicks.map((tickVal, i) => {
+                                const y = height - paddingY - ((tickVal - globalMin) / valueRange) * (height - 2 * paddingY);
+                                return (<g key={i}><line x1={paddingX} y1={y} x2={width} y2={y} stroke="#1e293b" strokeDasharray="4" strokeWidth="1" /><text x={paddingX - 10} y={y + 4} textAnchor="end" fill="#64748b" fontSize="10" fontWeight="500">{Math.round(tickVal)}</text></g>);
+                            })}
+                            <defs><linearGradient id="cloudGradient" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity="0.4" /><stop offset="100%" stopColor={color} stopOpacity="0.1" /></linearGradient></defs>
+                            <path d={cloudPath} fill="url(#cloudGradient)" stroke="none" />
+                            <path d={topLinePath} fill="none" stroke={color} strokeWidth="2" strokeOpacity="0.5" strokeDasharray="2 2" />
+                            {points.map((day, i) => (
+                                <g key={i}>
+                                    <line x1={day.x} y1={day.yMin} x2={day.x} y2={day.yMax} stroke={color} strokeWidth="1" opacity="0.3" />
+                                    {day.yAll.map((setPoint, idx) => (
+                                        <g key={idx} className="group">
+                                            <circle cx={day.x} cy={setPoint.y} r={setPoint.value === day.maxVal ? 5 : 3} fill={setPoint.value === day.maxVal ? "#fff" : color} stroke={color} strokeWidth={setPoint.value === day.maxVal ? 2 : 0} fillOpacity={setPoint.value === day.maxVal ? 1 : 0.7} />
+                                            {setPoint.value === day.maxVal && (<text x={day.x} y={setPoint.y - 10} textAnchor="middle" fill="white" fontSize="10" fontWeight="bold" className="drop-shadow-md">{setPoint.value}</text>)}
+                                        </g>
+                                    ))}
+                                    <text x={day.x} y={height - 5} textAnchor="middle" fill="#94a3b8" fontSize="10" fontWeight="500">{day.formattedDate}</text>
+                                </g>
+                            ))}
+                        </svg>
+                    </div>
+                </div>
+            );
+        };
+
+        const AnalysisPage = ({ onBack }) => {
+            const { history, customExercises } = useWorkout();
+            const [selectedExercise, setSelectedExercise] = useState("Squat");
+            const allExercises = ["Squat", "Bench Press", "Deadlift", "Overhead Press", "Barbell Row", "Lat Pulldown", "Leg Press", "Bicep Curl", ...customExercises];
+            const processedData = useMemo(() => {
+                if (!history) return [];
+                const data = [];
+                const sortedHistory = [...history].sort((a, b) => new Date(a.date) - new Date(b.date));
+                sortedHistory.forEach(day => {
+                    const exercise = day.exercises.find(e => e.name === selectedExercise);
+                    if (exercise && exercise.sets.length > 0) {
+                        const dateObj = new Date(day.date);
+                        data.push({ date: day.date, formattedDate: `${dateObj.getDate()}/${dateObj.getMonth() + 1}`, sets: exercise.sets });
+                    }
+                });
+                return data;
+            }, [history, selectedExercise]);
+            const allMaxWeights = processedData.map(d => Math.max(...d.sets.map(s => Number(s.weight))));
+            const currentMaxWeight = allMaxWeights.length > 0 ? allMaxWeights[allMaxWeights.length - 1] : 0;
+            const bestMaxWeight = allMaxWeights.length > 0 ? Math.max(...allMaxWeights) : 0;
+            const firstWeight = allMaxWeights.length > 0 ? allMaxWeights[0] : 0;
+            const progressPercent = firstWeight > 0 ? ((currentMaxWeight - firstWeight) / firstWeight) * 100 : 0;
+
+            return (
+                <div className="h-[100dvh] bg-slate-950 text-slate-100 flex flex-col p-6 overflow-hidden font-sans">
+                    <div className="flex items-center gap-4 mb-6">
+                        <button onClick={onBack} className="bg-slate-900 p-3 rounded-xl border border-slate-800 text-slate-400 hover:text-white transition-colors"><ArrowLeft size={20} /></button>
+                        <h1 className="text-2xl font-black text-white italic tracking-tight">ANALİZ</h1>
+                    </div>
+                    <div className="relative mb-6 z-20">
+                        <select value={selectedExercise} onChange={(e) => setSelectedExercise(e.target.value)} className="w-full bg-slate-900 text-white font-bold text-lg py-4 px-6 rounded-2xl border border-slate-800 focus:border-blue-500 outline-none appearance-none shadow-lg">{allExercises.map((ex) => <option key={ex} value={ex}>{ex}</option>)}</select>
+                        <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">▼</div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto scrollbar-hide pb-10">
+                        <div className="mb-8">
+                            <div className="flex justify-between items-center mb-4 px-1">
+                                <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Çalışma Aralığı (Min-Max)</span>
+                                <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-bold ${progressPercent >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}><TrendingUp size={14} />{progressPercent > 0 ? '+' : ''}{progressPercent.toFixed(1)}%</div>
+                            </div>
+                            <CloudChart data={processedData} color="#3b82f6" />
+                            <div className="mt-2 flex items-center justify-center gap-4 text-[10px] text-slate-500">
+                                <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 border border-blue-500"></span> Max Set</div>
+                                <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500/50"></span> Diğer Setler</div>
+                                <div className="flex items-center gap-1"><span className="w-4 h-2 bg-blue-500/20 rounded"></span> Çalışma Aralığı</div>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 mb-8">
+                            <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800"><div className="text-xs font-bold text-slate-500 uppercase mb-1">Son Seans Max</div><div className="text-3xl font-black text-white">{currentMaxWeight} <span className="text-sm font-normal text-slate-600">kg</span></div><div className="text-[10px] text-slate-500 mt-1">Son antrenman zirvesi</div></div>
+                            <div className="bg-gradient-to-br from-yellow-900/20 to-slate-900 rounded-2xl p-4 border border-yellow-500/20 relative overflow-hidden"><div className="absolute right-2 top-2 text-yellow-500/20"><Trophy size={48} /></div><div className="text-xs font-bold text-yellow-500 uppercase mb-1">Rekor</div><div className="text-3xl font-black text-white">{bestMaxWeight} <span className="text-sm font-normal text-slate-600">kg</span></div><div className="text-[10px] text-slate-500 mt-1">Şimdiye kadarki en iyi</div></div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // ---------------------------------------------------------
+        // 6. SAYFA: ANTREMAN (WorkoutPage + Timer)
+        // ---------------------------------------------------------
+        const RestTimerOverlay = ({ totalTime, onComplete, onClose }) => {
+            const [timeLeft, setTimeLeft] = useState(totalTime);
+            useEffect(() => {
+                if (timeLeft <= 0) { onComplete(); return; }
+                const timer = setInterval(() => { setTimeLeft(prev => prev - 1); }, 1000);
+                return () => clearInterval(timer);
+            }, [timeLeft, onComplete]);
+            const addTime = (seconds) => { setTimeLeft(prev => prev + seconds); };
+            return (
+                <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-slate-900 w-full max-w-md rounded-t-3xl border-t border-slate-700 p-6 pb-10 shadow-2xl animate-in slide-in-from-bottom duration-300">
+                        <div className="flex justify-between items-center mb-6"><div className="flex items-center gap-2 text-blue-400"><Clock size={20} /><span className="font-bold uppercase text-sm tracking-widest">Dinlenme</span></div><button onClick={onClose} className="bg-slate-800 p-2 rounded-full text-slate-400 hover:text-white"><X size={20} /></button></div>
+                        <div className="text-center mb-8"><div className="text-8xl font-black text-white tabular-nums tracking-tighter">{Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}</div><div className="mt-4 h-2 w-full bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-blue-500 transition-all duration-1000 ease-linear" style={{ width: `${100 - (timeLeft / totalTime * 100)}%` }}></div></div></div>
+                        <div className="flex gap-3"><button onClick={() => addTime(30)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-4 rounded-2xl font-bold text-lg transition-colors">+30 Sn</button><button onClick={onClose} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl font-bold text-lg transition-colors">Atla</button></div>
+                    </div>
+                </div>
+            );
+        };
+
+        const WorkoutPage = ({ onFinishAndExit, initialDate }) => {
+            const { saveWorkout, history, customExercises, addCustomExercise, settings } = useWorkout();
+            const [workoutLog, setWorkoutLog] = useState(() => { const existingDay = history.find(h => h.date === initialDate); return existingDay ? existingDay.exercises : []; });
+            const allExercises = ["Squat", "Bench Press", "Deadlift", "Overhead Press", "Barbell Row", "Lat Pulldown", "Leg Press", "Bicep Curl", ...customExercises, "➕ Yeni Hareket Ekle"];
+            const [selectedExercise, setSelectedExercise] = useState("Squat");
+            const [isAddingNewExercise, setIsAddingNewExercise] = useState(false);
+            const [newExerciseName, setNewExerciseName] = useState("");
+            const [currentSets, setCurrentSets] = useState([]);
+            const [baseWeight, setBaseWeight] = useState(40);
+            const [hasMicroLoad, setHasMicroLoad] = useState(false);
+            const [reps, setReps] = useState(10);
+            const [isFinished, setIsFinished] = useState(false);
+            const [isTimerActive, setIsTimerActive] = useState(false);
+            const weightOptions = Array.from({ length: 25 }, (_, i) => i * 5);
+            const repOptions = Array.from({ length: 28 }, (_, i) => i + 3);
+
+            const handleExerciseChange = (e) => {
+                if (e.target.value === "➕ Yeni Hareket Ekle") { setIsAddingNewExercise(true); setSelectedExercise(""); } 
+                else { setIsAddingNewExercise(false); setSelectedExercise(e.target.value); setCurrentSets([]); }
+            };
+            const saveNewExercise = () => { if (newExerciseName.trim()) { addCustomExercise(newExerciseName.trim()); setSelectedExercise(newExerciseName.trim()); setIsAddingNewExercise(false); setNewExerciseName(""); } };
+            const exerciseHistory = history ? history.map(day => { const found = day.exercises.find(e => e.name === selectedExercise); if (day.date === initialDate) return null; return found ? { date: day.date, sets: found.sets } : null; }).filter(Boolean) : [];
+            const addSet = () => { 
+                setCurrentSets([...currentSets, { id: Date.now(), weight: hasMicroLoad ? baseWeight + 2.5 : baseWeight, reps: reps }]); 
+                if (settings.restTimerEnabled) setIsTimerActive(true); 
+            };
+            const finishExercise = () => {
+                if (currentSets.length === 0) return;
+                setWorkoutLog(prevLog => {
+                    const existingIndex = prevLog.findIndex(ex => ex.name === selectedExercise);
+                    if (existingIndex !== -1) {
+                        const updatedLog = [...prevLog];
+                        updatedLog[existingIndex] = { ...updatedLog[existingIndex], sets: [...updatedLog[existingIndex].sets, ...currentSets] };
+                        return updatedLog;
+                    } else return [...prevLog, { id: Date.now(), name: selectedExercise, sets: currentSets }];
+                });
+                setCurrentSets([]);
+            };
+            const saveAndExit = () => { saveWorkout({ date: initialDate, exercises: workoutLog, id: Date.now() }); onFinishAndExit(); };
+            const totalSets = workoutLog.reduce((acc, ex) => acc + ex.sets.length, 0);
+            const totalVolume = workoutLog.reduce((acc, ex) => acc + ex.sets.reduce((sAcc, s) => sAcc + (s.weight * s.reps), 0), 0);
+
+            if (isFinished) return (
+                <div className="h-[100dvh] bg-slate-950 flex flex-col items-center justify-center p-6 animate-in zoom-in duration-300">
+                    <Trophy size={80} className="text-yellow-400 mb-6 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]" /><h2 className="text-4xl font-black text-white italic mb-2">HARİKA!</h2><p className="text-slate-400 mb-8 text-center">{initialDate} tarihli antrenman güncellendi.</p>
+                    <div className="grid grid-cols-2 gap-4 w-full mb-8"><div className="bg-slate-900 p-4 rounded-2xl text-center border border-slate-800"><div className="text-3xl font-black text-white">{totalSets}</div><div className="text-xs font-bold text-slate-500 uppercase">Toplam Set</div></div><div className="bg-slate-900 p-4 rounded-2xl text-center border border-slate-800"><div className="text-3xl font-black text-white">{(totalVolume/1000).toFixed(1)}k</div><div className="text-xs font-bold text-slate-500 uppercase">Hacim (KG)</div></div></div>
+                    <button onClick={saveAndExit} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-2xl text-xl shadow-lg shadow-green-900/50">Kaydet ve Çık</button>
+                </div>
+            );
+
+            return (
+                <div className="h-[100dvh] bg-slate-950 text-slate-100 font-sans flex flex-col overflow-hidden">
+                    {isTimerActive && <RestTimerOverlay totalTime={settings.restTimerSeconds} onComplete={() => setIsTimerActive(false)} onClose={() => setIsTimerActive(false)} />}
+                    <header className="flex-none px-4 pt-6 pb-2 flex items-center justify-between bg-slate-950 z-30">
+                        <div className="flex items-center gap-4"><button onClick={onFinishAndExit} className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-slate-400 hover:text-white active:scale-95 transition-all"><ArrowLeft size={20} /></button><div><h1 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500 italic tracking-tighter antialiased leading-none">IRONLOG</h1><p className="text-[10px] text-slate-500 font-bold tracking-widest mt-1">{initialDate}</p></div></div>
+                        <div className="bg-slate-900/80 p-2 rounded-xl border border-slate-800"><Activity size={20} className="text-blue-500" /></div>
+                    </header>
+                    <div className="flex-1 overflow-y-auto overflow-x-hidden pb-safe px-4 space-y-6 scrollbar-hide">
+                        <div className="mt-2">
+                            {!isAddingNewExercise ? (
+                                <div className="relative"><select value={selectedExercise} onChange={handleExerciseChange} className="w-full bg-slate-900 text-white font-bold text-xl py-4 px-6 rounded-2xl border border-slate-800 focus:border-blue-500 outline-none appearance-none shadow-lg transition-all antialiased">{allExercises.map((ex) => <option key={ex} value={ex}>{ex}</option>)}</select><div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">▼</div></div>
+                            ) : (
+                                <div className="bg-slate-900 p-4 rounded-2xl border border-blue-500/50 shadow-lg animate-in fade-in slide-in-from-top-2"><label className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-2 block">Yeni Hareket İsmi</label><input type="text" autoFocus value={newExerciseName} onChange={(e) => setNewExerciseName(e.target.value)} placeholder="Örn: Triceps Pushdown" className="w-full bg-slate-950 text-white font-bold text-lg p-3 rounded-xl border border-slate-700 focus:border-blue-500 outline-none mb-3" /><div className="flex gap-3"><button onClick={() => setIsAddingNewExercise(false)} className="flex-1 bg-slate-800 text-slate-400 py-3 rounded-xl font-bold text-sm">İptal</button><button onClick={saveNewExercise} className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold text-sm">Ekle</button></div></div>
+                            )}
+                        </div>
+                        {!isAddingNewExercise && (
+                            <>
+                                <div className="bg-slate-900/30 border border-slate-800/50 rounded-3xl p-5 backdrop-blur-sm mt-6">
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="flex flex-col items-center"><WheelPicker label="AĞIRLIK (KG)" items={weightOptions} selectedValue={baseWeight} onSelect={setBaseWeight} /><button onClick={() => setHasMicroLoad(!hasMicroLoad)} className={`mt-4 w-full h-12 rounded-xl text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2 border antialiased ${hasMicroLoad ? "bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-900/50" : "bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700"}`}>{hasMicroLoad ? <Check size={18} /> : <Plus size={18} />} +2.5 KG</button></div>
+                                        <div className="flex flex-col h-full justify-between"><WheelPicker label="TEKRAR" items={repOptions} selectedValue={reps} onSelect={setReps} /><div className="h-12 flex items-center justify-center"><span className="text-xs font-bold text-slate-500 tracking-wider antialiased">HEDEF: 8-12</span></div></div>
+                                    </div>
+                                    <button onClick={addSet} className="w-full mt-6 bg-gradient-to-r from-blue-600 to-indigo-600 active:scale-[0.98] text-white h-16 rounded-2xl font-black text-xl shadow-xl shadow-blue-900/20 transition-all flex items-center justify-center gap-3 uppercase tracking-wide antialiased"><Plus size={28} strokeWidth={4} /> Seti Ekle</button>
+                                </div>
+                                {currentSets.length > 0 && (
+                                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 mt-6">
+                                        <div className="flex items-center justify-between mb-3 px-2"><span className="text-xs font-bold text-slate-500 uppercase tracking-widest antialiased">Mevcut Setler</span><span className="text-xs font-bold text-blue-400 antialiased">{currentSets.length} Set</span></div>
+                                        <div className="space-y-3">{currentSets.map((set, index) => (<div key={set.id} className="flex items-center justify-between bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-sm relative overflow-hidden group"><div className="absolute left-0 top-0 bottom-0 w-1.5 bg-blue-500"></div><div className="flex items-center gap-5 pl-2"><span className="text-slate-500 font-bold text-lg opacity-50 antialiased">#{index + 1}</span><div className="flex items-baseline gap-1"><span className="text-2xl font-black text-white antialiased">{set.weight}</span><span className="text-xs font-bold text-slate-500 antialiased">KG</span></div><div className="w-px h-8 bg-slate-800"></div><div className="flex items-baseline gap-1"><span className="text-2xl font-black text-blue-400 antialiased">{set.reps}</span><span className="text-xs font-bold text-slate-500 antialiased">TEKRAR</span></div></div><button onClick={() => setCurrentSets(currentSets.filter(s => s.id !== set.id))} className="p-3 text-slate-600 hover:text-red-500 active:scale-90 transition-transform"><Trash2 size={20} /></button></div>))}</div>
+                                        <button onClick={finishExercise} className="w-full mt-4 bg-slate-800 text-green-400 border border-green-500/20 h-14 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-slate-800/80 active:scale-[0.98] transition-all antialiased"><Save size={20} /> Hareketi Tamamla</button>
+                                    </div>
+                                )}
+                                {exerciseHistory.length > 0 && (
+                                    <div className="mt-8"><div className="flex items-center gap-2 mb-3 px-2 opacity-80"><div className="bg-yellow-500/20 p-1.5 rounded text-yellow-500"><History size={14} /></div><span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{selectedExercise} Geçmişi</span></div><div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide px-1">{exerciseHistory.map((day, idx) => (<div key={idx} className="flex-none w-40 bg-slate-900/50 border border-slate-800 rounded-xl p-3 flex flex-col gap-2"><div className="text-[10px] font-bold text-slate-500 border-b border-slate-800 pb-1 mb-1">{day.date}</div><div className="space-y-1">{day.sets.map((s, i) => (<div key={i} className="flex justify-between items-center text-xs"><span className="text-slate-300 font-bold">{s.weight}kg</span><span className="text-slate-500">x{s.reps}</span></div>))}</div></div>))}</div></div>
+                                )}
+                                {workoutLog.length > 0 && (
+                                    <div className="pb-10 mt-6"><div className="flex items-center gap-3 mb-4 mt-8"><Check size={16} className="text-green-500" /><span className="text-xs font-black uppercase tracking-widest text-slate-500 antialiased">Bugün Tamamlananlar</span></div><div className="space-y-4">{workoutLog.map((ex) => (<div key={ex.id} className="bg-slate-900 rounded-3xl p-5 border border-slate-800"><div className="flex justify-between items-center mb-4 border-b border-slate-800 pb-3"><h3 className="font-bold text-xl text-white tracking-tight antialiased">{ex.name}</h3><div className="flex items-center gap-2"><span className="text-xs font-bold bg-slate-800 text-slate-400 px-3 py-1 rounded-full antialiased">{ex.sets.length} SET</span><button onClick={() => setWorkoutLog(workoutLog.filter(e => e.id !== ex.id))} className="bg-slate-800 p-1.5 rounded-full text-red-400 hover:bg-red-500/20"><Trash2 size={14} /></button></div></div><div className="grid grid-cols-4 gap-2">{ex.sets.map((s, i) => (<div key={i} className="bg-slate-950 border border-slate-800 rounded-xl py-3 flex flex-col items-center justify-center"><span className="text-lg font-black text-white leading-none antialiased">{s.weight}</span><span className="text-[10px] font-bold text-slate-500 mt-1 antialiased">x {s.reps}</span></div>))}</div></div>))}</div><button onClick={() => setIsFinished(true)} className="w-full mt-8 bg-green-600 hover:bg-green-700 text-white p-4 rounded-2xl font-black text-lg shadow-xl shadow-green-900/20 flex items-center justify-center gap-2 transition-all active:scale-95"><Check size={24} strokeWidth={3} /> GÜNÜ TAMAMLA</button></div>
+                                )}
+                            </>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // ---------------------------------------------------------
+        // 7. SAYFA: ANA GİRİŞ (HomePage)
+        // ---------------------------------------------------------
+        const HomePage = ({ onStartWorkout, onOpenAnalysis, onOpenSettings }) => {
+            const { history, clearHistory } = useWorkout();
+            const [expandedId, setExpandedId] = useState(null);
+            const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+            const toggleExpand = (id) => setExpandedId(expandedId === id ? null : id);
+            const handleClearHistory = () => { if (window.confirm("Tüm antrenman geçmişini silmek istediğine emin misin?")) clearHistory(); };
+
+            return (
+                <div className="h-[100dvh] bg-slate-950 text-slate-100 flex flex-col p-6">
+                    <div className="mt-8 mb-10 flex justify-between items-start">
+                        <div>
+                            <button onClick={onOpenSettings} className="mb-4 bg-slate-900 p-2.5 rounded-xl text-slate-400 border border-slate-800 hover:text-white hover:bg-slate-800 transition-colors"><Settings size={20} /></button>
+                            <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-br from-white via-slate-400 to-slate-600 italic tracking-tighter mb-2">IRONLOG</h1>
+                            <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Progressive Overload Tracker</p>
+                        </div>
+                        {history && history.length > 0 && (<button onClick={handleClearHistory} className="bg-slate-900 p-3 rounded-xl text-slate-600 hover:text-red-500 hover:bg-red-500/10 transition-colors border border-slate-800"><Trash2 size={20} /></button>)}
+                    </div>
+                    <div className="bg-slate-900 rounded-3xl p-6 border border-slate-800 shadow-xl mb-6">
+                        <div className="flex items-center gap-3 mb-6"><div className="bg-blue-600/20 p-3 rounded-xl text-blue-500"><Calendar size={24} /></div><div className="flex flex-col"><span className="text-xs font-bold text-slate-500 uppercase">Tarih Seç</span><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="bg-transparent text-white font-bold text-xl outline-none" /></div></div>
+                        <button onClick={() => onStartWorkout(date)} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-5 rounded-2xl font-black text-xl shadow-lg shadow-blue-900/40 flex items-center justify-center gap-3 active:scale-[0.98] transition-transform">ANTREMANA BAŞLA <ChevronRight size={24} strokeWidth={3} /></button>
+                    </div>
+                    <button onClick={onOpenAnalysis} className="w-full bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 text-slate-300 p-4 rounded-2xl font-bold flex items-center justify-between mb-8 group transition-all"><div className="flex items-center gap-3"><div className="bg-emerald-500/10 text-emerald-500 p-2 rounded-lg group-hover:scale-110 transition-transform"><TrendingUp size={20} /></div><span>Analiz</span></div><ChevronRight size={20} className="text-slate-500" /></button>
+                    <div className="flex-1 overflow-hidden flex flex-col">
+                        <div className="flex items-center gap-2 mb-4 opacity-70"><History size={16} /><span className="text-xs font-bold uppercase tracking-widest">Son Antrenmanlar</span></div>
+                        <div className="overflow-y-auto space-y-3 pb-safe scrollbar-hide">
+                            {(!history || history.length === 0) ? ( <div className="text-center text-slate-600 py-10 text-sm font-medium">Henüz kayıtlı antrenman yok.</div> ) : ( history.map((item) => { const isExpanded = expandedId === item.id; return ( <div key={item.id} onClick={() => toggleExpand(item.id)} className={`bg-slate-900/50 rounded-2xl border border-slate-800 transition-all duration-300 overflow-hidden ${isExpanded ? 'bg-slate-900 border-blue-500/30 shadow-lg' : ''}`}> <div className="p-4 flex items-center justify-between cursor-pointer"> <div> <div className={`font-bold text-lg mb-1 ${isExpanded ? 'text-blue-400' : 'text-white'}`}>{item.date}</div> <div className="text-xs text-slate-500 font-bold">{item.exercises.length} Hareket</div> </div> <div className={`bg-slate-800 p-2 rounded-lg text-slate-400 transition-transform duration-300 ${isExpanded ? 'rotate-90 text-blue-400 bg-blue-500/10' : ''}`}> <ChevronRight size={16} /> </div> </div> {isExpanded && ( <div className="px-4 pb-4 pt-0 animate-in fade-in slide-in-from-top-2 duration-200"> <div className="h-px w-full bg-slate-800 mb-4"></div> <div className="space-y-4"> {item.exercises.map((ex, i) => ( <div key={i} className="flex flex-col gap-2"> <div className="flex justify-between items-center"> <span className="text-sm font-bold text-slate-300">{ex.name}</span> <span className="text-[10px] font-bold text-slate-600 bg-slate-950 px-2 py-1 rounded border border-slate-800"> {ex.sets.reduce((acc, s) => acc + (s.weight * s.reps), 0)} KG Vol. </span> </div> <div className="flex flex-wrap gap-1.5"> {ex.sets.map((set, setIndex) => ( <div key={setIndex} className="bg-slate-800/50 border border-slate-700/50 rounded px-2 py-1 text-xs text-slate-400"> <span className="text-slate-200 font-bold">{set.weight}</span> <span className="opacity-50 mx-0.5">x</span> <span className="text-slate-200 font-bold">{set.reps}</span> </div> ))} </div> </div> ))} </div> </div> )} </div> ); }) )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // ---------------------------------------------------------
+        // 8. ANA YÖNETİCİ (App)
+        // ---------------------------------------------------------
+        const AppContent = () => {
+            const [currentScreen, setCurrentScreen] = useState('home'); 
+            const [selectedDate, setSelectedDate] = useState(null);
+
+            const startWorkout = (date) => { setSelectedDate(date); setCurrentScreen('workout'); };
+            const finishWorkout = () => { setCurrentScreen('home'); };
+            
+            return (
+                <>
+                    {currentScreen === 'home' && <HomePage onStartWorkout={startWorkout} onOpenAnalysis={() => setCurrentScreen('analysis')} onOpenSettings={() => setCurrentScreen('settings')} />}
+                    {currentScreen === 'workout' && <WorkoutPage onFinishAndExit={finishWorkout} initialDate={selectedDate} />}
+                    {currentScreen === 'analysis' && <AnalysisPage onBack={() => setCurrentScreen('home')} />}
+                    {currentScreen === 'settings' && <SettingsPage onBack={() => setCurrentScreen('home')} />}
+                </>
+            );
+        };
+
+        const App = () => (
+            <WorkoutProvider>
+                <AppContent />
+            </WorkoutProvider>
+        );
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
